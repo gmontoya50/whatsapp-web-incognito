@@ -271,6 +271,7 @@ NodeHandler.onReceivedE2EMessage = async function(messageNode, e2eMessage)
 
     var isRevokeMessage = NodeHandler.checkForMessageDeletionNode(e2eMessage, messageId, remoteJid);
     await interceptViewOnceMessages(e2eMessage, messageId);
+    saveIncomingMessage(e2eMessage, messageId, remoteJid, participant);
 
     if (!saveDeletedMsgsHookEnabled)
     {
