@@ -9,6 +9,7 @@ You can find the original extension in [Chrome Web Store](https://chrome.google.
 - Block "read" receipts sending, and decide when to send them later (works for statuses as well)
 - Block "typing"/"seen" updates (Will prevent you from seeing others')
 - Always restore deleted messages of all kinds
+- Automatically back up all incoming messages
 - See whether every message was sent from a phone or a computer
 - Download statuses
 ## Installing from GitHub directly

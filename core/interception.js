@@ -392,6 +392,7 @@ function initialize()
     if (WALogs)
         hookLogs();
     initializeDeletedMessagesDB();
+    initializeBackupMessagesDB();
 }
 
 function hookLogs()
@@ -496,6 +497,28 @@ function initializeDeletedMessagesDB()
     }
 }
 
+function initializeBackupMessagesDB()
+{
+    var backupDBOpenRequest = indexedDB.open("allMsgs", 1);
+
+    backupDBOpenRequest.onupgradeneeded = function(event)
+    {
+        const db = event.target.result;
+        var store = db.createObjectStore('msgs', { keyPath: 'id' });
+        store.createIndex("remote_index", "remoteJid");
+    };
+    backupDBOpenRequest.onerror = function(e)
+    {
+        console.error("WhatsIncognito: Error opening backup database");
+        console.error("Error", backupDBOpenRequest);
+        console.error(e);
+    };
+    backupDBOpenRequest.onsuccess = () =>
+    {
+        window.backupMessagesDB = backupDBOpenRequest.result;
+    }
+}
+
 async function saveDeletedMessage(retrievedMsg, deletedMessageKey, revokeMessageID)
 {
     // Determine author data
@@ -566,6 +589,74 @@ async function saveDeletedMessage(retrievedMsg, deletedMessageKey, revokeMessage
     else
     {
         console.log("WhatsIncognito: Deleted message contents not found");
+    }
+}
+
+async function saveIncomingMessage(e2eMessage, messageId, remoteJid, participant)
+{
+    if (!window.backupMessagesDB) return;
+
+    let from = participant.split("@")[0].split(":")[0];
+    let body = "";
+    let type = "";
+
+    if (e2eMessage.conversation)
+    {
+        body = e2eMessage.conversation;
+        type = "text";
+    }
+    else if (e2eMessage.extendedTextMessage && e2eMessage.extendedTextMessage.text)
+    {
+        body = e2eMessage.extendedTextMessage.text;
+        type = "extended_text";
+    }
+    else if (e2eMessage.imageMessage)
+    {
+        body = "[image]";
+        type = "image";
+    }
+    else if (e2eMessage.videoMessage)
+    {
+        body = "[video]";
+        type = "video";
+    }
+    else if (e2eMessage.documentMessage)
+    {
+        body = "[document]";
+        type = "document";
+    }
+    else if (e2eMessage.audioMessage)
+    {
+        body = "[audio]";
+        type = "audio";
+    }
+    else if (e2eMessage.stickerMessage)
+    {
+        body = "[sticker]";
+        type = "sticker";
+    }
+    else
+    {
+        type = "unknown";
+    }
+
+    let record = {
+        id: messageId,
+        body: body,
+        type: type,
+        timestamp: e2eMessage.messageTimestamp,
+        from: from,
+        remoteJid: remoteJid
+    };
+
+    try
+    {
+        const transcation = window.backupMessagesDB.transaction('msgs', "readwrite");
+        transcation.objectStore('msgs').add(record);
+    }
+    catch (e)
+    {
+        console.warn("WhatsIncognito: Error saving incoming message", e);
     }
 }
 
